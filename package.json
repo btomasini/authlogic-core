@@ -1,5 +1,5 @@
 {
-  "name": "authlogic-javascript",
+  "name": "@authlogic/javascript",
   "version": "1.0.0",
   "description": "A nice greeter",
   "main": "lib/index.js",
