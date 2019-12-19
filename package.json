@@ -1,5 +1,6 @@
 {
   "name": "@authlogic/javascript",
+  "private": false,
   "version": "0.1.0",
   "description": "A nice greeter",
   "main": "lib/index.js",
