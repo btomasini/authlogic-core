@@ -5,11 +5,21 @@ interface Params {
     issuer: string
     clientId: string
     grantType: string
+    scope: string
+    responseType: string
 }
+
+interface Storage {
+    state: string
+    nonce: string
+}
+
 
 interface Secure {
-
+    secure(): void
 }
+
+const storageKey = "authlogic.storage";
 
 class SecureImpl implements Secure {
 
@@ -22,16 +32,28 @@ class SecureImpl implements Secure {
 
     async secure() {
         if (!this.authentication) {
-            await this.redirect();
+            let storage = await this.createAndStoreStorage();
+            await this.redirect(storage);
         }
     }
 
-    private async redirect() {
-        window.location.assign(`${this.params.issuer}/authorize?client_id=${this.params.clientId}`)
+    private async redirect(storage: Storage) {
+        let p = this.params;
+        let redirectUri = window.location.href;
+        window.location.assign(`${this.params.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${redirectUri}&state=${storage.state}&nonce=${storage.nonce}&response_type=${p.responseType}`);
     }
 
     async getAuthentication(): Promise<Optional<Authentication>> {
         return await this.authentication;
+    }
+
+    private async createAndStoreStorage(): Promise<Storage> {
+        let storage = {
+            state: "state",
+            nonce: "state"
+        }
+        sessionStorage.setItem(storageKey, JSON.stringify(storage));
+        return storage;
     }
 }
 
