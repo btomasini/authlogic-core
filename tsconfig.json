@@ -1,12 +1,16 @@
 {
   "compilerOptions": {
     "lib": [
-      "es6"
+      "es6",
+      "DOM"
     ],
     "module": "commonjs",
     "declaration": true,
     "outDir": "./lib",
-    "strict": true
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
   },
   "include": [
     "src"

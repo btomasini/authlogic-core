@@ -1,5 +1,6 @@
-import { HelloWorld } from '../index';
+import { create, Secure } from '../index';
 
-test('Hello World', () => {
-  expect(HelloWorld()).toBe('Hello World!');
+test('create', () => {
+    let result = create({ clientId: 'test' })
+    expect(result).not.toBeUndefined();
 });
