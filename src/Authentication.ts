@@ -6,4 +6,4 @@ class Authentication {
     expiresIn: number = 0
 }
 
-export default Authentication;
+export { Authentication };
