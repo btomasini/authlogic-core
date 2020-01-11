@@ -56,7 +56,6 @@ const randomStringDefault = (length: number): string => {
 const getQueryDefault = (): string => location.search;
 
 class SecureImpl implements ISecure {
-
   // Visible for testing
   public randomString: (length: number) => string = randomStringDefault;
 
@@ -143,7 +142,7 @@ class SecureImpl implements ISecure {
     const redirectUri = window.location.href;
     window.location.assign(
       `${this.params.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${
-      storage.state
+        storage.state
       }&nonce=${storage.nonce}&response_type=code`,
     );
   }

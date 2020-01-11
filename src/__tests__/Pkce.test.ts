@@ -14,7 +14,6 @@ describe('PckeSource', () => {
   });
 
   it('generates a correct pair', () => {
-
     const unit = new PkceSource();
 
     unit.randomBuffer = (): Buffer => {
