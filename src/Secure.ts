@@ -1,10 +1,10 @@
-import { Authentication } from './Authentication';
-import { PkceSource, Pkce } from './Pkce';
-import { Optional } from './Lang';
-import * as queryString from 'query-string';
 import axios from 'axios';
+import * as queryString from 'query-string';
+import { Authentication } from './Authentication';
+import { Optional } from './Lang';
+import { IPkce, PkceSource } from './Pkce';
 
-interface Params {
+interface IParams {
   issuer: string;
   clientId: string;
   scope: string;
@@ -26,13 +26,13 @@ interface ErrorResponse {
 }
 */
 
-interface Storage {
-  pkce: Pkce;
-  state: string;
+interface IStorage {
   nonce: string;
+  pkce: IPkce;
+  state: string;
 }
 
-interface Secure {
+interface ISecure {
   secure(): void;
 }
 
@@ -44,10 +44,10 @@ const errorCategoryKey = 'error';
 const errorDescriptionKey = 'error_description';
 
 const randomStringDefault = (length: number): string => {
-  var result = '';
-  var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  var charactersLength = characters.length;
-  for (var i = 0; i < length; i++) {
+  let result = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const charactersLength = characters.length;
+  for (let i = 0; i < length; i++) {
     result += characters.charAt(Math.floor(Math.random() * charactersLength));
   }
   return result;
@@ -55,22 +55,28 @@ const randomStringDefault = (length: number): string => {
 
 const getQueryDefault = (): string => location.search;
 
-class SecureImpl implements Secure {
-  private params: Params;
+class SecureImpl implements ISecure {
+
+  // Visible for testing
+  public randomString: (length: number) => string = randomStringDefault;
+
+  // Visible for testing
+  public getQuery: () => string = getQueryDefault;
+
+  private params: IParams;
   private pkceSource: PkceSource;
   private authentication?: Authentication;
 
-  // Visible for testing
-  randomString: (length: number) => string = randomStringDefault;
-  // Visible for testing
-  getQuery: () => string = getQueryDefault;
-
-  constructor(params: Params, pkceSource: PkceSource) {
+  constructor(params: IParams, pkceSource: PkceSource) {
     this.pkceSource = pkceSource;
     this.params = params;
   }
 
-  async secure() {
+  public async getAuthentication(): Promise<Optional<Authentication>> {
+    return this.authentication;
+  }
+
+  public async secure() {
     const q = queryString.parse(this.getQuery());
     const code = this.stringFromQuery(q, codeKey);
     const state = this.stringFromQuery(q, stateKey);
@@ -84,19 +90,19 @@ class SecureImpl implements Secure {
       await this.loadFromCode(code, state);
       return;
     }
-    let storage = await this.createAndStoreStorage();
+    const storage = await this.createAndStoreStorage();
     await this.redirect(storage);
   }
 
   private stringFromQuery(q: queryString.ParsedQuery<string>, name: string): string | undefined {
     const raw = q[name];
-    if (typeof raw == 'string') {
+    if (typeof raw === 'string') {
       return raw;
     }
     return undefined;
   }
 
-  async loadFromCode(code: string, state: string | undefined) {
+  private async loadFromCode(code: string, state: string | undefined) {
     const storage = await this.getStorage();
     if (!storage) {
       throw new Error('Nothing in storage');
@@ -105,9 +111,9 @@ class SecureImpl implements Secure {
     const res = await axios.post(
       this.params.issuer + '/oauth/token',
       queryString.stringify({
-        grant_type: 'authorization_code',
-        code: code,
+        code,
         code_verifier: storage.pkce.verifier,
+        grant_type: 'authorization_code',
       }),
       {
         adapter: require('axios/lib/adapters/xhr'),
@@ -125,28 +131,24 @@ class SecureImpl implements Secure {
     if (resp.access_token) {
       this.authentication = {
         accessToken: resp.access_token,
+        expiresIn: resp.expires_in,
         idToken: resp.id_token,
         refreshToken: resp.refresh_token,
-        expiresIn: resp.expires_in,
       };
     }
   }
 
-  private async redirect(storage: Storage) {
-    let p = this.params;
-    let redirectUri = window.location.href;
+  private async redirect(storage: IStorage) {
+    const p = this.params;
+    const redirectUri = window.location.href;
     window.location.assign(
       `${this.params.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${
-        storage.state
+      storage.state
       }&nonce=${storage.nonce}&response_type=code`,
     );
   }
 
-  async getAuthentication(): Promise<Optional<Authentication>> {
-    return this.authentication;
-  }
-
-  private async getStorage(): Promise<Optional<Storage>> {
+  private async getStorage(): Promise<Optional<IStorage>> {
     const raw = sessionStorage.getItem(storageKey);
     if (raw == null) {
       return undefined;
@@ -154,15 +156,15 @@ class SecureImpl implements Secure {
     return JSON.parse(raw);
   }
 
-  private async createAndStoreStorage(): Promise<Storage> {
-    const storage: Storage = {
+  private async createAndStoreStorage(): Promise<IStorage> {
+    const storage: IStorage = {
+      nonce: this.randomString(32),
       pkce: this.pkceSource.create(),
       state: this.randomString(32),
-      nonce: this.randomString(32),
     };
     sessionStorage.setItem(storageKey, JSON.stringify(storage));
     return storage;
   }
 }
 
-export { Params, Secure, SecureImpl, randomStringDefault };
+export { IParams, ISecure, SecureImpl, randomStringDefault };

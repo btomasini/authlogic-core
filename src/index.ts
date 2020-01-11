@@ -1,6 +1,6 @@
-import { Params, Secure, SecureImpl } from './Secure';
 import { PkceSource } from './Pkce';
+import { IParams, ISecure, SecureImpl } from './Secure';
 
-const create = (params: Params): Secure => new SecureImpl(params, new PkceSource());
+const create = (params: IParams): ISecure => new SecureImpl(params, new PkceSource());
 
-export { Secure, Params, create };
+export { ISecure, IParams, create };

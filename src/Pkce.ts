@@ -2,23 +2,23 @@ import { SHA256 } from 'crypto-js';
 import * as base64 from 'crypto-js/enc-base64';
 import * as randombytes from 'randombytes';
 
-interface Pkce {
+interface IPkce {
   challenge: string;
   verifier: string;
 }
 
 class PkceSource {
-  randomBuffer(): Buffer {
+  public randomBuffer(): Buffer {
     return randombytes(32);
   }
 
-  create(): Pkce {
-    let verifier = urlReplace(this.randomBuffer().toString('base64'));
-    let challenge = urlReplace(SHA256(verifier).toString(base64));
+  public create(): IPkce {
+    const verifier = urlReplace(this.randomBuffer().toString('base64'));
+    const challenge = urlReplace(SHA256(verifier).toString(base64));
 
     return {
-      challenge: challenge,
-      verifier: verifier,
+      challenge,
+      verifier,
     };
   }
 }
@@ -30,4 +30,4 @@ function urlReplace(input: string) {
     .replace(/=/g, '');
 }
 
-export { Pkce, PkceSource };
+export { IPkce, PkceSource };

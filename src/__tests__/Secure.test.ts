@@ -1,10 +1,11 @@
-import { SecureImpl, Params, randomStringDefault } from '../Secure';
-import { PkceSource } from '../Pkce';
 import { Substitute, SubstituteOf } from '@fluffy-spoon/substitute';
-import * as queryString from 'query-string';
-import 'jest-localstorage-mock';
 import axios from 'axios';
+import 'jest-localstorage-mock';
+import * as queryString from 'query-string';
 import { Optional } from '../Lang';
+import { PkceSource } from '../Pkce';
+import { IParams, randomStringDefault, SecureImpl } from '../Secure';
+
 jest.mock('axios');
 const mockAxios = axios as jest.Mocked<typeof axios>;
 
@@ -14,8 +15,8 @@ beforeEach(() => {
 
 describe('randomStringDefault', () => {
   it('generates correct random values', () => {
-    let results = new Map<string, boolean>();
-    let iterations = 1000;
+    const results = new Map<string, boolean>();
+    const iterations = 1000;
     for (let i = 0; i < iterations; i++) {
       let s = randomStringDefault(32);
       expect(s).toMatch(/^[A-Za-z0-9]{32}$/);
@@ -48,19 +49,19 @@ describe('SecureImpl', () => {
   let unit: SecureImpl;
   let error: Optional<Error>;
 
-  let params = (): Params => {
+  const params = (): IParams => {
     return {
-      issuer: issuer,
-      clientId: clientId,
-      scope: scope,
+      clientId,
+      issuer,
+      scope,
     };
   };
 
-  let makeUnit = (): SecureImpl => {
-    let _unit = new SecureImpl(params(), pkceSource);
-    _unit.randomString = (length: number) => `stub-${length}`;
-    _unit.getQuery = () => query;
-    return _unit;
+  const makeUnit = (): SecureImpl => {
+    const $unit = new SecureImpl(params(), pkceSource);
+    $unit.randomString = (length: number) => `stub-${length}`;
+    $unit.getQuery = () => query;
+    return $unit;
   };
 
   let redirectTo: string;
@@ -111,12 +112,12 @@ describe('SecureImpl', () => {
       });
       it('stores state and nonce', () => {
         expect(JSON.parse(sessionStorage.__STORE__[storageKey])).toEqual({
+          nonce: 'stub-32',
           pkce: {
-            challenge: challenge,
-            verifier: verifier,
+            challenge,
+            verifier,
           },
           state: 'stub-32',
-          nonce: 'stub-32',
         });
       });
     });
@@ -151,12 +152,12 @@ describe('SecureImpl', () => {
       beforeEach(async () => {
         query = `?code=${code}`;
         sessionStorage.__STORE__[storageKey] = JSON.stringify({
+          nonce,
           pkce: {
-            challenge: challenge,
-            verifier: verifier,
+            challenge,
+            verifier,
           },
-          state: state,
-          nonce: nonce,
+          state,
         });
       });
 
@@ -175,9 +176,9 @@ describe('SecureImpl', () => {
           expect(mockAxios.post).toHaveBeenCalledWith(
             issuer + '/oauth/token',
             queryString.stringify({
-              grant_type: 'authorization_code',
-              code: code,
+              code,
               code_verifier: verifier,
+              grant_type: 'authorization_code',
             }),
             {
               adapter: require('axios/lib/adapters/xhr'),
@@ -211,9 +212,9 @@ describe('SecureImpl', () => {
           expect(mockAxios.post).toHaveBeenCalledWith(
             issuer + '/oauth/token',
             queryString.stringify({
-              grant_type: 'authorization_code',
-              code: code,
+              code,
               code_verifier: verifier,
+              grant_type: 'authorization_code',
             }),
             {
               adapter: require('axios/lib/adapters/xhr'),
