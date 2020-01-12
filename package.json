@@ -1,7 +1,7 @@
 {
   "name": "@authlogic/core",
   "private": false,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Core javascript authlogic library",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

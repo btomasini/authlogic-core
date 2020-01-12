@@ -1,4 +1,4 @@
-import { Authentication } from './Authentication'
+import { Authentication } from './Authentication';
 import { PkceSource } from './Pkce';
 import { IParams, ISecure, SecureImpl } from './Secure';
 
