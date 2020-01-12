@@ -34,7 +34,7 @@ interface IStorage {
 
 interface ISecure {
   secure(): Promise<void>;
-  getAuthentication(): Promise<Optional<Authentication>>;
+  getAuthentication(): Optional<Authentication>;
 }
 
 const storageKey = 'authlogic.storage';
@@ -72,7 +72,7 @@ class SecureImpl implements ISecure {
     this.params = params;
   }
 
-  public async getAuthentication(): Promise<Optional<Authentication>> {
+  public getAuthentication(): Optional<Authentication> {
     return this.authentication;
   }
 
@@ -143,7 +143,7 @@ class SecureImpl implements ISecure {
     const redirectUri = window.location.href;
     window.location.assign(
       `${this.params.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${
-        storage.state
+      storage.state
       }&nonce=${storage.nonce}&response_type=code`,
     );
   }
