@@ -120,7 +120,7 @@ describe('SecureImpl', () => {
           expect(redirectTo).toBe(
             `test-issuer/authorize?client_id=test-client-id&redirect_uri=${encodeURIComponent(
               window.location.href,
-            )}&state=stub-32&nonce=stub-32&response_type=code`,
+            )}&state=stub-32&nonce=stub-32&response_type=code&scope=test-scope`,
           );
         });
         it('stores state and nonce', () => {
