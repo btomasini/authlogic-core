@@ -17,9 +17,9 @@ interface IStorage {
 }
 
 interface ISecure {
-  init(params: IParams): void
-  secure(): Promise<void>
-  getAuthentication(): Optional<Authentication>
+  init(params: IParams): void;
+  secure(): Promise<void>;
+  getAuthentication(): Optional<Authentication>;
 }
 
 const storageKey = 'authlogic.storage';
@@ -42,7 +42,6 @@ const randomStringDefault = (length: number): string => {
 const getQueryDefault = (): string => location.search;
 
 class SecureImpl implements ISecure {
-
   // Visible for testing
   public randomString: (length: number) => string = randomStringDefault;
 
@@ -62,11 +61,11 @@ class SecureImpl implements ISecure {
   }
 
   public init(params: IParams) {
-    this.params = params
+    this.params = params;
   }
 
   public async secure() {
-    this.assertInit()
+    this.assertInit();
     const q = queryString.parse(this.getQuery());
     const code = this.stringFromQuery(q, codeKey);
     const state = this.stringFromQuery(q, stateKey);
@@ -88,10 +87,9 @@ class SecureImpl implements ISecure {
 
   private assertInit() {
     if (!this.params) {
-      throw new Error('Secure object not initizlied. Please call init')
+      throw new Error('Secure object not initizlied. Please call init');
     }
   }
-
 
   private stringFromQuery(q: queryString.ParsedQuery<string>, name: string): string | undefined {
     const raw = q[name];
@@ -142,7 +140,7 @@ class SecureImpl implements ISecure {
     const redirectUri = window.location.href;
     window.location.assign(
       `${this.params!.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${
-      storage.state
+        storage.state
       }&nonce=${storage.nonce}&response_type=code`,
     );
   }

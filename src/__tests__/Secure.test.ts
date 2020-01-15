@@ -82,19 +82,19 @@ describe('SecureImpl', () => {
     describe('secure', () => {
       it('throws an exception', async () => {
         try {
-          await unit.secure()
-          fail('Exception should have been thrown')
+          await unit.secure();
+          fail('Exception should have been thrown');
         } catch (e) {
-          expect(e.message).toBe('Secure object not initizlied. Please call init')
+          expect(e.message).toBe('Secure object not initizlied. Please call init');
         }
       });
-    })
+    });
   });
 
   describe('with init', () => {
     beforeEach(() => {
-      unit.init(params())
-    })
+      unit.init(params());
+    });
     describe('no secure call', () => {
       it('has no authentication', async () => {
         expect(unit.getAuthentication()).toBeUndefined();
@@ -105,7 +105,6 @@ describe('SecureImpl', () => {
     });
 
     describe('secure', () => {
-
       describe('redirect', () => {
         beforeEach(async () => {
           pkceSource.create().returns({
