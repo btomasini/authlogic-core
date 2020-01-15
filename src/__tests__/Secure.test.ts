@@ -58,7 +58,7 @@ describe('SecureImpl', () => {
   };
 
   const makeUnit = (): SecureImpl => {
-    const $unit = new SecureImpl(params(), pkceSource);
+    const $unit = new SecureImpl(pkceSource);
     $unit.randomString = (length: number) => `stub-${length}`;
     $unit.getQuery = () => query;
     return $unit;
@@ -75,127 +75,82 @@ describe('SecureImpl', () => {
       redirectTo = value;
     });
     sessionStorage.removeItem(storageKey);
+    unit = makeUnit();
   });
 
   describe('initial', () => {
-    unit = new SecureImpl(params(), pkceSource);
-    it('has no authentication', async () => {
-      expect(await unit.getAuthentication()).toBeUndefined();
-    });
-    it('has no session storage', () => {
-      expect(sessionStorage.__STORE__).toEqual({});
-    });
+    describe('secure', () => {
+      it('throws an exception', async () => {
+        try {
+          await unit.secure()
+          fail('Exception should have been thrown')
+        } catch (e) {
+          expect(e.message).toBe('Secure object not initizlied. Please call init')
+        }
+      });
+    })
   });
 
-  describe('authorization_code', () => {
+  describe('with init', () => {
     beforeEach(() => {
-      unit = makeUnit();
-    });
-
-    describe('Secure', () => {
-      beforeEach(async () => {
-        pkceSource.create().returns({
-          challenge: challenge,
-          verifier: verifier,
-        });
-        await unit.secure();
-      });
+      unit.init(params())
+    })
+    describe('no secure call', () => {
       it('has no authentication', async () => {
-        expect(await unit.getAuthentication()).toBeUndefined();
+        expect(unit.getAuthentication()).toBeUndefined();
       });
-      it('redirected to the endpoint', () => {
-        expect(redirectTo).toBe(
-          `test-issuer/authorize?client_id=test-client-id&redirect_uri=${encodeURIComponent(
-            window.location.href,
-          )}&state=stub-32&nonce=stub-32&response_type=code`,
-        );
-      });
-      it('stores state and nonce', () => {
-        expect(JSON.parse(sessionStorage.__STORE__[storageKey])).toEqual({
-          nonce: 'stub-32',
-          pkce: {
-            challenge,
-            verifier,
-          },
-          state: 'stub-32',
-        });
+      it('has no session storage', () => {
+        expect(sessionStorage.__STORE__).toEqual({});
       });
     });
 
-    describe('return with code without storage', () => {
-      it('throws an error', async () => {
-        query = `?code=${code}`;
-        try {
-          await unit.secure();
-          fail('Expected an error');
-        } catch (e) {
-          expect(e).toEqual(new Error('Nothing in storage'));
-        }
-      });
-    });
+    describe('secure', () => {
 
-    describe('return with oauth error message', () => {
-      beforeEach(async () => {
-        query = `?error=${errorCategory}&error_description=${errorDescription}`;
-        try {
-          await unit.secure();
-        } catch (e) {
-          error = e;
-        }
-      });
-      it('throws an error', () => {
-        expect(error).toEqual(new Error(`[${errorCategory}] ${errorDescription}`));
-      });
-    });
-
-    describe('return with code and storage', () => {
-      beforeEach(async () => {
-        query = `?code=${code}`;
-        sessionStorage.__STORE__[storageKey] = JSON.stringify({
-          nonce,
-          pkce: {
-            challenge,
-            verifier,
-          },
-          state,
-        });
-      });
-
-      describe('server error', () => {
+      describe('redirect', () => {
         beforeEach(async () => {
-          const err = new Error('Host cannot be reached');
-          try {
-            mockAxios.post.mockRejectedValue(err);
-            await unit.secure();
-            fail('Expected exception');
-          } catch (e) {
-            expect(e).toEqual(err);
-          }
+          pkceSource.create().returns({
+            challenge,
+            verifier,
+          });
+          await unit.secure();
         });
-        it('makes call to token endpoint', async () => {
-          expect(mockAxios.post).toHaveBeenCalledWith(
-            issuer + '/oauth/token',
-            queryString.stringify({
-              code,
-              code_verifier: verifier,
-              grant_type: 'authorization_code',
-            }),
-            {
-              adapter: require('axios/lib/adapters/xhr'),
-              headers: { 'Content-Type': 'multipart/form-data' },
-            },
+        it('has no authentication', async () => {
+          expect(unit.getAuthentication()).toBeUndefined();
+        });
+        it('redirected to the endpoint', () => {
+          expect(redirectTo).toBe(
+            `test-issuer/authorize?client_id=test-client-id&redirect_uri=${encodeURIComponent(
+              window.location.href,
+            )}&state=stub-32&nonce=stub-32&response_type=code`,
           );
         });
+        it('stores state and nonce', () => {
+          expect(JSON.parse(sessionStorage.__STORE__[storageKey])).toEqual({
+            nonce: 'stub-32',
+            pkce: {
+              challenge,
+              verifier,
+            },
+            state: 'stub-32',
+          });
+        });
       });
 
-      describe('oauth error', () => {
+      describe('return with code without storage', () => {
+        it('throws an error', async () => {
+          query = `?code=${code}`;
+          try {
+            await unit.secure();
+            fail('Expected an error');
+          } catch (e) {
+            expect(e).toEqual(new Error('Nothing in storage'));
+          }
+        });
+      });
+
+      describe('return with oauth error message', () => {
         beforeEach(async () => {
-          mockAxios.post.mockResolvedValue({
-            data: JSON.stringify({
-              error: errorCategory,
-              error_description: errorDescription,
-            }),
-          });
+          query = `?error=${errorCategory}&error_description=${errorDescription}`;
           try {
             await unit.secure();
           } catch (e) {
@@ -205,22 +160,82 @@ describe('SecureImpl', () => {
         it('throws an error', () => {
           expect(error).toEqual(new Error(`[${errorCategory}] ${errorDescription}`));
         });
-        it('sets authentication to undefined', async () => {
-          expect(await unit.getAuthentication()).toBeUndefined();
-        });
-        it('makes call to token endpoint', async () => {
-          expect(mockAxios.post).toHaveBeenCalledWith(
-            issuer + '/oauth/token',
-            queryString.stringify({
-              code,
-              code_verifier: verifier,
-              grant_type: 'authorization_code',
-            }),
-            {
-              adapter: require('axios/lib/adapters/xhr'),
-              headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      describe('return with code and storage', () => {
+        beforeEach(async () => {
+          query = `?code=${code}`;
+          sessionStorage.__STORE__[storageKey] = JSON.stringify({
+            nonce,
+            pkce: {
+              challenge,
+              verifier,
             },
-          );
+            state,
+          });
+        });
+
+        describe('server error', () => {
+          beforeEach(async () => {
+            const err = new Error('Host cannot be reached');
+            try {
+              mockAxios.post.mockRejectedValue(err);
+              await unit.secure();
+              fail('Expected exception');
+            } catch (e) {
+              expect(e).toEqual(err);
+            }
+          });
+          it('makes call to token endpoint', async () => {
+            expect(mockAxios.post).toHaveBeenCalledWith(
+              issuer + '/oauth/token',
+              queryString.stringify({
+                code,
+                code_verifier: verifier,
+                grant_type: 'authorization_code',
+              }),
+              {
+                adapter: require('axios/lib/adapters/xhr'),
+                headers: { 'Content-Type': 'multipart/form-data' },
+              },
+            );
+          });
+        });
+
+        describe('oauth error', () => {
+          beforeEach(async () => {
+            mockAxios.post.mockResolvedValue({
+              data: JSON.stringify({
+                error: errorCategory,
+                error_description: errorDescription,
+              }),
+            });
+            try {
+              await unit.secure();
+            } catch (e) {
+              error = e;
+            }
+          });
+          it('throws an error', () => {
+            expect(error).toEqual(new Error(`[${errorCategory}] ${errorDescription}`));
+          });
+          it('sets authentication to undefined', async () => {
+            expect(await unit.getAuthentication()).toBeUndefined();
+          });
+          it('makes call to token endpoint', async () => {
+            expect(mockAxios.post).toHaveBeenCalledWith(
+              issuer + '/oauth/token',
+              queryString.stringify({
+                code,
+                code_verifier: verifier,
+                grant_type: 'authorization_code',
+              }),
+              {
+                adapter: require('axios/lib/adapters/xhr'),
+                headers: { 'Content-Type': 'multipart/form-data' },
+              },
+            );
+          });
         });
       });
     });

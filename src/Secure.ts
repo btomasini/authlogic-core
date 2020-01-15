@@ -10,22 +10,6 @@ interface IParams {
   scope: string;
 }
 
-/*
-TODO - Can use 
-interface TokenResponse {
-    token_type: string,
-    expires_in: number,
-    access_token: string,
-    id_token: string,
-    refresh_token: string
-}
-
-interface ErrorResponse {
-    error: string,
-    error_description: number,
-}
-*/
-
 interface IStorage {
   nonce: string;
   pkce: IPkce;
@@ -33,8 +17,9 @@ interface IStorage {
 }
 
 interface ISecure {
-  secure(): Promise<void>;
-  getAuthentication(): Optional<Authentication>;
+  init(params: IParams): void
+  secure(): Promise<void>
+  getAuthentication(): Optional<Authentication>
 }
 
 const storageKey = 'authlogic.storage';
@@ -57,31 +42,37 @@ const randomStringDefault = (length: number): string => {
 const getQueryDefault = (): string => location.search;
 
 class SecureImpl implements ISecure {
+
   // Visible for testing
   public randomString: (length: number) => string = randomStringDefault;
 
   // Visible for testing
   public getQuery: () => string = getQueryDefault;
 
-  private params: IParams;
+  private params?: IParams;
   private pkceSource: PkceSource;
   private authentication?: Authentication;
 
-  constructor(params: IParams, pkceSource: PkceSource) {
+  constructor(pkceSource: PkceSource) {
     this.pkceSource = pkceSource;
-    this.params = params;
   }
 
   public getAuthentication(): Optional<Authentication> {
     return this.authentication;
   }
 
+  public init(params: IParams) {
+    this.params = params
+  }
+
   public async secure() {
+    this.assertInit()
     const q = queryString.parse(this.getQuery());
     const code = this.stringFromQuery(q, codeKey);
     const state = this.stringFromQuery(q, stateKey);
     const errorCategory = this.stringFromQuery(q, errorCategoryKey);
     const errorDescription = this.stringFromQuery(q, errorDescriptionKey) || '';
+
     if (errorCategory) {
       this.authentication = undefined;
       throw new Error(`[${errorCategory}] ${errorDescription}`);
@@ -90,9 +81,17 @@ class SecureImpl implements ISecure {
       await this.loadFromCode(code, state);
       return;
     }
+
     const storage = await this.createAndStoreStorage();
     await this.redirect(storage);
   }
+
+  private assertInit() {
+    if (!this.params) {
+      throw new Error('Secure object not initizlied. Please call init')
+    }
+  }
+
 
   private stringFromQuery(q: queryString.ParsedQuery<string>, name: string): string | undefined {
     const raw = q[name];
@@ -109,7 +108,7 @@ class SecureImpl implements ISecure {
     }
 
     const res = await axios.post(
-      this.params.issuer + '/oauth/token',
+      this.params!.issuer + '/oauth/token',
       queryString.stringify({
         code,
         code_verifier: storage.pkce.verifier,
@@ -139,11 +138,11 @@ class SecureImpl implements ISecure {
   }
 
   private async redirect(storage: IStorage) {
-    const p = this.params;
+    const p = this.params!;
     const redirectUri = window.location.href;
     window.location.assign(
-      `${this.params.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${
-        storage.state
+      `${this.params!.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${
+      storage.state
       }&nonce=${storage.nonce}&response_type=code`,
     );
   }
