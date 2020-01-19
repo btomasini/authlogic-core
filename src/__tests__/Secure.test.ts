@@ -9,19 +9,19 @@ import { IParams, randomStringDefault, SecureImpl } from '../Secure';
 jest.mock('axios');
 const mockAxios = axios as jest.Mocked<typeof axios>;
 
-let origPushState: any
+let origPushState: any;
 const pushStateMock = jest.fn();
 
 beforeEach(() => {
-  pushStateMock.mockReset()
+  pushStateMock.mockReset();
   sessionStorage.clear();
-  origPushState = history.pushState
-  history.pushState = pushStateMock
+  origPushState = history.pushState;
+  history.pushState = pushStateMock;
 });
 
 afterEach(() => {
-  history.pushState = origPushState
-})
+  history.pushState = origPushState;
+});
 
 describe('randomStringDefault', () => {
   it('generates correct random values', () => {
@@ -102,8 +102,8 @@ describe('SecureImpl', () => {
         expect(sessionStorage.__STORE__).toEqual({});
       });
       it('does not push state', () => {
-        expect(pushStateMock.mock.calls.length).toBe(0)
-      })
+        expect(pushStateMock.mock.calls.length).toBe(0);
+      });
     });
 
     describe('secure', () => {
@@ -137,8 +137,8 @@ describe('SecureImpl', () => {
           });
         });
         it('does not push state', () => {
-          expect(pushStateMock.mock.calls.length).toBe(0)
-        })
+          expect(pushStateMock.mock.calls.length).toBe(0);
+        });
       });
 
       describe('return with code without storage', () => {
@@ -152,8 +152,8 @@ describe('SecureImpl', () => {
           }
         });
         it('does not push state', () => {
-          expect(pushStateMock.mock.calls.length).toBe(0)
-        })
+          expect(pushStateMock.mock.calls.length).toBe(0);
+        });
       });
 
       describe('return with oauth error message', () => {
@@ -169,13 +169,12 @@ describe('SecureImpl', () => {
           expect(error).toEqual(new Error(`[${errorCategory}] ${errorDescription}`));
         });
         it('does not push state', () => {
-          expect(pushStateMock.mock.calls.length).toBe(0)
-        })
+          expect(pushStateMock.mock.calls.length).toBe(0);
+        });
       });
 
       describe('return with code and storage', () => {
-
-        const thisUri = 'http://test-uri'
+        const thisUri = 'http://test-uri';
 
         beforeEach(async () => {
           query = `?code=${code}`;
@@ -216,8 +215,8 @@ describe('SecureImpl', () => {
             );
           });
           it('does not push state', () => {
-            expect(pushStateMock.mock.calls.length).toBe(0)
-          })
+            expect(pushStateMock.mock.calls.length).toBe(0);
+          });
         });
 
         describe('oauth error', () => {
@@ -255,8 +254,8 @@ describe('SecureImpl', () => {
             );
           });
           it('does not push state', () => {
-            expect(pushStateMock.mock.calls.length).toBe(0)
-          })
+            expect(pushStateMock.mock.calls.length).toBe(0);
+          });
         });
         describe('success', () => {
           beforeEach(async () => {
@@ -301,9 +300,9 @@ describe('SecureImpl', () => {
             );
           });
           it('pushes state to stored uri', () => {
-            expect(pushStateMock.mock.calls.length).toBe(1)
-            expect(pushStateMock.mock.calls[0][2]).toBe(thisUri)
-          })
+            expect(pushStateMock.mock.calls.length).toBe(1);
+            expect(pushStateMock.mock.calls[0][2]).toBe(thisUri);
+          });
         });
       });
     });

@@ -122,16 +122,16 @@ class SecureImpl implements ISecure {
         idToken: resp.id_token,
         refreshToken: resp.refresh_token,
       };
-      window.history.pushState('page', '', storage.thisUri)
+      window.history.pushState('page', '', storage.thisUri);
     }
   }
 
   private async redirect(storage: IStorage) {
     const p = this.params!;
     window.location.assign(
-      `${this.params!.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(storage.thisUri)}&state=${
-      storage.state
-      }&nonce=${storage.nonce}&response_type=code&scope=${encodeURIComponent(
+      `${this.params!.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(
+        storage.thisUri,
+      )}&state=${storage.state}&nonce=${storage.nonce}&response_type=code&scope=${encodeURIComponent(
         p.scope,
       )}&code_challenge=${encodeURIComponent(storage.pkce.challenge)}`,
     );
