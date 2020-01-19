@@ -37,7 +37,8 @@ describe('randomStringDefault', () => {
 });
 
 describe('SecureImpl', () => {
-  const storageKey = 'authlogic.storage';
+  const storageFlowKey = 'authlogic.storage.flow';
+  const storageAuthKey = 'authlogic.storage.auth';
 
   const errorCategory = 'test-error';
   const errorDescription = 'test-error-description';
@@ -58,6 +59,13 @@ describe('SecureImpl', () => {
   const idToken = 'test-id-token';
   const expiresIn = 7200;
   const accessToken = 'test-access-token';
+
+  const authentication = {
+    accessToken,
+    expiresIn,
+    idToken,
+    refreshToken,
+  }
 
   let pkceSource: SubstituteOf<PkceSource>;
 
@@ -89,7 +97,7 @@ describe('SecureImpl', () => {
     window.location.assign = jest.fn(value => {
       redirectTo = value;
     });
-    sessionStorage.removeItem(storageKey);
+    sessionStorage.removeItem(storageFlowKey);
     unit = makeUnit();
   });
 
@@ -104,9 +112,28 @@ describe('SecureImpl', () => {
       it('does not push state', () => {
         expect(pushStateMock.mock.calls.length).toBe(0);
       });
+      it('does not have auth storage', () => {
+        expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
+      });
     });
 
     describe('secure', () => {
+      describe('authentication already in storage', () => {
+        beforeEach(async () => {
+          sessionStorage.__STORE__[storageAuthKey] = JSON.stringify(authentication);
+          expect(unit.getAuthentication()).toBeUndefined()
+          await unit.secure()
+        })
+        it('loads authentication from the session store', () => {
+          expect(unit.getAuthentication()).toEqual(authentication);
+        })
+        it('does not push state', () => {
+          expect(pushStateMock.mock.calls.length).toBe(0);
+        });
+        it('does not have flow storage', () => {
+          expect(sessionStorage.__STORE__[storageFlowKey]).toBeUndefined();
+        });
+      })
       describe('redirect', () => {
         beforeEach(async () => {
           pkceSource.create().returns({
@@ -126,7 +153,7 @@ describe('SecureImpl', () => {
           );
         });
         it('stores state and nonce', () => {
-          expect(JSON.parse(sessionStorage.__STORE__[storageKey])).toEqual({
+          expect(JSON.parse(sessionStorage.__STORE__[storageFlowKey])).toEqual({
             nonce: 'stub-32',
             pkce: {
               challenge,
@@ -138,6 +165,9 @@ describe('SecureImpl', () => {
         });
         it('does not push state', () => {
           expect(pushStateMock.mock.calls.length).toBe(0);
+        });
+        it('does not have auth storage', () => {
+          expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
         });
       });
 
@@ -153,6 +183,9 @@ describe('SecureImpl', () => {
         });
         it('does not push state', () => {
           expect(pushStateMock.mock.calls.length).toBe(0);
+        });
+        it('does not have auth storage', () => {
+          expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
         });
       });
 
@@ -171,6 +204,9 @@ describe('SecureImpl', () => {
         it('does not push state', () => {
           expect(pushStateMock.mock.calls.length).toBe(0);
         });
+        it('does not have auth storage', () => {
+          expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
+        });
       });
 
       describe('return with code and storage', () => {
@@ -178,7 +214,7 @@ describe('SecureImpl', () => {
 
         beforeEach(async () => {
           query = `?code=${code}`;
-          sessionStorage.__STORE__[storageKey] = JSON.stringify({
+          sessionStorage.__STORE__[storageFlowKey] = JSON.stringify({
             nonce,
             pkce: {
               challenge,
@@ -216,6 +252,9 @@ describe('SecureImpl', () => {
           });
           it('does not push state', () => {
             expect(pushStateMock.mock.calls.length).toBe(0);
+          });
+          it('does not have auth storage', () => {
+            expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
           });
         });
 
@@ -256,6 +295,9 @@ describe('SecureImpl', () => {
           it('does not push state', () => {
             expect(pushStateMock.mock.calls.length).toBe(0);
           });
+          it('does not have auth storage', () => {
+            expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
+          });
         });
         describe('success', () => {
           beforeEach(async () => {
@@ -278,12 +320,7 @@ describe('SecureImpl', () => {
             expect(error).toBeUndefined();
           });
           it('sets authentication', async () => {
-            expect(await unit.getAuthentication()).toEqual({
-              accessToken,
-              expiresIn,
-              idToken,
-              refreshToken,
-            });
+            expect(await unit.getAuthentication()).toEqual(authentication);
           });
           it('makes call to token endpoint', async () => {
             expect(mockAxios.post).toHaveBeenCalledWith(
@@ -302,6 +339,12 @@ describe('SecureImpl', () => {
           it('pushes state to stored uri', () => {
             expect(pushStateMock.mock.calls.length).toBe(1);
             expect(pushStateMock.mock.calls[0][2]).toBe(thisUri);
+          });
+          it('removes storage', () => {
+            expect(sessionStorage.__STORE__[storageFlowKey]).toBeUndefined();
+          });
+          it('sets authentication to storgae', () => {
+            expect(sessionStorage.__STORE__[storageAuthKey]).toEqual(JSON.stringify(authentication));
           });
         });
       });

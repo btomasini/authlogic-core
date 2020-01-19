@@ -22,7 +22,8 @@ interface ISecure {
   getAuthentication(): Optional<Authentication>;
 }
 
-const storageKey = 'authlogic.storage';
+const storageFlowKey = 'authlogic.storage.flow';
+const storageAuthKey = 'authlogic.storage.auth';
 
 const codeKey = 'code';
 const stateKey = 'state';
@@ -62,6 +63,11 @@ class SecureImpl implements ISecure {
   }
 
   public async secure() {
+
+    if (await this.loadFromStorage()) {
+      return
+    }
+
     const q = queryString.parse(this.getQuery());
     const code = this.stringFromQuery(q, codeKey);
     const state = this.stringFromQuery(q, stateKey);
@@ -122,6 +128,7 @@ class SecureImpl implements ISecure {
         idToken: resp.id_token,
         refreshToken: resp.refresh_token,
       };
+      await this.finalStorage(this.authentication)
       window.history.pushState('page', '', storage.thisUri);
     }
   }
@@ -138,7 +145,7 @@ class SecureImpl implements ISecure {
   }
 
   private async getStorage(): Promise<Optional<IStorage>> {
-    const raw = sessionStorage.getItem(storageKey);
+    const raw = sessionStorage.getItem(storageFlowKey);
     if (raw == null) {
       return undefined;
     }
@@ -152,8 +159,23 @@ class SecureImpl implements ISecure {
       state: this.randomString(32),
       thisUri: window.location.href,
     };
-    sessionStorage.setItem(storageKey, JSON.stringify(storage));
+    sessionStorage.setItem(storageFlowKey, JSON.stringify(storage));
     return storage;
+  }
+
+  private async finalStorage(authentication: Authentication) {
+    sessionStorage.setItem(storageAuthKey, JSON.stringify(authentication));
+    sessionStorage.removeItem(storageFlowKey);
+  }
+
+  private async loadFromStorage(): Promise<boolean> {
+    const authString = sessionStorage.getItem(storageAuthKey)
+    if (authString) {
+      this.authentication = JSON.parse(authString)
+      return true
+    } else {
+      return false
+    }
   }
 }
 
