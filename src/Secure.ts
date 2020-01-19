@@ -140,7 +140,7 @@ class SecureImpl implements ISecure {
     const redirectUri = window.location.href;
     window.location.assign(
       `${this.params!.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${
-      storage.state
+        storage.state
       }&nonce=${storage.nonce}&response_type=code&scope=${encodeURIComponent(
         p.scope,
       )}&code_challenge=${encodeURIComponent(storage.pkce.challenge)}`,

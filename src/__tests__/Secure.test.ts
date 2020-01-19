@@ -44,10 +44,10 @@ describe('SecureImpl', () => {
 
   let query = '';
 
-  const refreshToken = 'test-refresh-token'
-  const idToken = 'test-id-token'
-  const expiresIn = 7200
-  const accessToken = 'test-access-token'
+  const refreshToken = 'test-refresh-token';
+  const idToken = 'test-id-token';
+  const expiresIn = 7200;
+  const accessToken = 'test-access-token';
 
   let pkceSource: SubstituteOf<PkceSource>;
 
