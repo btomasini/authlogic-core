@@ -11,13 +11,13 @@ interface IParams {
 }
 
 interface IStorage {
+  thisUri: string;
   nonce: string;
   pkce: IPkce;
   state: string;
 }
 
 interface ISecure {
-  init(params: IParams): void;
   secure(): Promise<void>;
   getAuthentication(): Optional<Authentication>;
 }
@@ -52,7 +52,8 @@ class SecureImpl implements ISecure {
   private pkceSource: PkceSource;
   private authentication?: Authentication;
 
-  constructor(pkceSource: PkceSource) {
+  constructor(params: IParams, pkceSource: PkceSource) {
+    this.params = params;
     this.pkceSource = pkceSource;
   }
 
@@ -60,12 +61,7 @@ class SecureImpl implements ISecure {
     return this.authentication;
   }
 
-  public init(params: IParams) {
-    this.params = params;
-  }
-
   public async secure() {
-    this.assertInit();
     const q = queryString.parse(this.getQuery());
     const code = this.stringFromQuery(q, codeKey);
     const state = this.stringFromQuery(q, stateKey);
@@ -83,12 +79,6 @@ class SecureImpl implements ISecure {
 
     const storage = await this.createAndStoreStorage();
     await this.redirect(storage);
-  }
-
-  private assertInit() {
-    if (!this.params) {
-      throw new Error('Secure object not initizlied. Please call init');
-    }
   }
 
   private stringFromQuery(q: queryString.ParsedQuery<string>, name: string): string | undefined {
@@ -132,15 +122,15 @@ class SecureImpl implements ISecure {
         idToken: resp.id_token,
         refreshToken: resp.refresh_token,
       };
+      window.history.pushState('page', '', storage.thisUri)
     }
   }
 
   private async redirect(storage: IStorage) {
     const p = this.params!;
-    const redirectUri = window.location.href;
     window.location.assign(
-      `${this.params!.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${
-        storage.state
+      `${this.params!.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(storage.thisUri)}&state=${
+      storage.state
       }&nonce=${storage.nonce}&response_type=code&scope=${encodeURIComponent(
         p.scope,
       )}&code_challenge=${encodeURIComponent(storage.pkce.challenge)}`,
@@ -160,6 +150,7 @@ class SecureImpl implements ISecure {
       nonce: this.randomString(32),
       pkce: this.pkceSource.create(),
       state: this.randomString(32),
+      thisUri: window.location.href,
     };
     sessionStorage.setItem(storageKey, JSON.stringify(storage));
     return storage;
