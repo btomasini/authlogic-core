@@ -63,9 +63,8 @@ class SecureImpl implements ISecure {
   }
 
   public async secure() {
-
     if (await this.loadFromStorage()) {
-      return
+      return;
     }
 
     const q = queryString.parse(this.getQuery());
@@ -128,7 +127,7 @@ class SecureImpl implements ISecure {
         idToken: resp.id_token,
         refreshToken: resp.refresh_token,
       };
-      await this.finalStorage(this.authentication)
+      await this.finalStorage(this.authentication);
       window.history.pushState('page', '', storage.thisUri);
     }
   }
@@ -169,12 +168,12 @@ class SecureImpl implements ISecure {
   }
 
   private async loadFromStorage(): Promise<boolean> {
-    const authString = sessionStorage.getItem(storageAuthKey)
+    const authString = sessionStorage.getItem(storageAuthKey);
     if (authString) {
-      this.authentication = JSON.parse(authString)
-      return true
+      this.authentication = JSON.parse(authString);
+      return true;
     } else {
-      return false
+      return false;
     }
   }
 }

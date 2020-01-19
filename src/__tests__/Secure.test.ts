@@ -65,7 +65,7 @@ describe('SecureImpl', () => {
     expiresIn,
     idToken,
     refreshToken,
-  }
+  };
 
   let pkceSource: SubstituteOf<PkceSource>;
 
@@ -121,19 +121,19 @@ describe('SecureImpl', () => {
       describe('authentication already in storage', () => {
         beforeEach(async () => {
           sessionStorage.__STORE__[storageAuthKey] = JSON.stringify(authentication);
-          expect(unit.getAuthentication()).toBeUndefined()
-          await unit.secure()
-        })
+          expect(unit.getAuthentication()).toBeUndefined();
+          await unit.secure();
+        });
         it('loads authentication from the session store', () => {
           expect(unit.getAuthentication()).toEqual(authentication);
-        })
+        });
         it('does not push state', () => {
           expect(pushStateMock.mock.calls.length).toBe(0);
         });
         it('does not have flow storage', () => {
           expect(sessionStorage.__STORE__[storageFlowKey]).toBeUndefined();
         });
-      })
+      });
       describe('redirect', () => {
         beforeEach(async () => {
           pkceSource.create().returns({
