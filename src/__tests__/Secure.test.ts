@@ -44,6 +44,11 @@ describe('SecureImpl', () => {
 
   let query = '';
 
+  const refreshToken = 'test-refresh-token'
+  const idToken = 'test-id-token'
+  const expiresIn = 7200
+  const accessToken = 'test-access-token'
+
   let pkceSource: SubstituteOf<PkceSource>;
 
   let unit: SecureImpl;
@@ -204,10 +209,10 @@ describe('SecureImpl', () => {
         describe('oauth error', () => {
           beforeEach(async () => {
             mockAxios.post.mockResolvedValue({
-              data: JSON.stringify({
+              data: {
                 error: errorCategory,
                 error_description: errorDescription,
-              }),
+              },
             });
             try {
               await unit.secure();
@@ -220,6 +225,49 @@ describe('SecureImpl', () => {
           });
           it('sets authentication to undefined', async () => {
             expect(await unit.getAuthentication()).toBeUndefined();
+          });
+          it('makes call to token endpoint', async () => {
+            expect(mockAxios.post).toHaveBeenCalledWith(
+              issuer + '/oauth/token',
+              queryString.stringify({
+                code,
+                code_verifier: verifier,
+                grant_type: 'authorization_code',
+              }),
+              {
+                adapter: require('axios/lib/adapters/xhr'),
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              },
+            );
+          });
+        });
+        describe('success', () => {
+          beforeEach(async () => {
+            mockAxios.post.mockResolvedValue({
+              data: {
+                access_token: accessToken,
+                id_token: idToken,
+                expires_in: expiresIn,
+                refresh_token: refreshToken,
+                token_type: 'bearer',
+              },
+            });
+            try {
+              await unit.secure();
+            } catch (e) {
+              error = e;
+            }
+          });
+          it('does not throw an error', () => {
+            expect(error).toBeUndefined();
+          });
+          it('sets authentication', async () => {
+            expect(await unit.getAuthentication()).toEqual({
+              accessToken,
+              expiresIn,
+              idToken,
+              refreshToken,
+            });
           });
           it('makes call to token endpoint', async () => {
             expect(mockAxios.post).toHaveBeenCalledWith(
