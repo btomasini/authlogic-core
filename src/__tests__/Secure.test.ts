@@ -195,7 +195,7 @@ describe('SecureImpl', () => {
               }),
               {
                 adapter: require('axios/lib/adapters/xhr'),
-                headers: { 'Content-Type': 'multipart/form-data' },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
               },
             );
           });
@@ -231,7 +231,7 @@ describe('SecureImpl', () => {
               }),
               {
                 adapter: require('axios/lib/adapters/xhr'),
-                headers: { 'Content-Type': 'multipart/form-data' },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
               },
             );
           });
