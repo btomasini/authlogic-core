@@ -53,9 +53,12 @@ class SecureImpl implements ISecure {
   private pkceSource: PkceSource;
   private authentication?: Authentication;
 
-  constructor(params: IParams, pkceSource: PkceSource) {
-    this.params = params;
+  constructor(pkceSource: PkceSource) {
     this.pkceSource = pkceSource;
+  }
+
+  public init(params: IParams) {
+    this.params = params;
   }
 
   public getAuthentication(): Optional<Authentication> {
@@ -63,6 +66,8 @@ class SecureImpl implements ISecure {
   }
 
   public async secure() {
+    this.assertInit();
+
     if (await this.loadFromStorage()) {
       return;
     }
@@ -84,6 +89,12 @@ class SecureImpl implements ISecure {
 
     const storage = await this.createAndStoreStorage();
     await this.redirect(storage);
+  }
+
+  private assertInit() {
+    if (!this.params) {
+      throw new Error('Params not set, please call init first.');
+    }
   }
 
   private stringFromQuery(q: queryString.ParsedQuery<string>, name: string): string | undefined {
