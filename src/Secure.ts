@@ -18,6 +18,7 @@ interface IStorage {
 }
 
 interface ISecure {
+  init(): void;
   secure(): Promise<void>;
   getAuthentication(): Optional<Authentication>;
 }
