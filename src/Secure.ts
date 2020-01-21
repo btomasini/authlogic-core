@@ -25,6 +25,7 @@ interface IUserinfo {
 interface ISecure {
   init(params: IParams): void;
   secure(): Promise<void>;
+  getUserinfo(): Promise<IUserinfo>;
   getAuthentication(): Optional<Authentication>;
 }
 
