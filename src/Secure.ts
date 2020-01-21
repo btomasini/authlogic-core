@@ -17,6 +17,11 @@ interface IStorage {
   state: string;
 }
 
+interface IUserinfo {
+  sub: string;
+  [x: string]: any;
+}
+
 interface ISecure {
   init(params: IParams): void;
   secure(): Promise<void>;
@@ -53,6 +58,7 @@ class SecureImpl implements ISecure {
   private params?: IParams;
   private pkceSource: PkceSource;
   private authentication?: Authentication;
+  private userinfo?: IUserinfo
 
   constructor(pkceSource: PkceSource) {
     this.pkceSource = pkceSource;
@@ -64,6 +70,27 @@ class SecureImpl implements ISecure {
 
   public getAuthentication(): Optional<Authentication> {
     return this.authentication;
+  }
+
+  public async getUserinfo(): Promise<IUserinfo> {
+
+    if (this.userinfo) {
+      return Promise.resolve(this.userinfo)
+    }
+
+    if (!this.authentication) {
+      throw new Error('Not authenticated')
+    }
+
+    const resp = await axios.get(this.params!.issuer + '/userinfo', {
+      headers: {
+        'Authorization': 'Bearer ' + this.authentication.accessToken
+      }
+    })
+
+    this.userinfo = resp.data
+    return this.userinfo!
+
   }
 
   public async secure() {
@@ -190,4 +217,4 @@ class SecureImpl implements ISecure {
   }
 }
 
-export { IParams, ISecure, SecureImpl, randomStringDefault };
+export { IParams, ISecure, IUserinfo, SecureImpl, randomStringDefault };

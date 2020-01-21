@@ -4,7 +4,7 @@ import 'jest-localstorage-mock';
 import * as queryString from 'query-string';
 import { Optional } from '../Lang';
 import { PkceSource } from '../Pkce';
-import { IParams, randomStringDefault, SecureImpl } from '../Secure';
+import { IParams, randomStringDefault, SecureImpl, IUserinfo } from '../Secure';
 
 jest.mock('axios');
 const mockAxios = axios as jest.Mocked<typeof axios>;
@@ -66,6 +66,11 @@ describe('SecureImpl', () => {
     idToken,
     refreshToken,
   };
+
+  const userinfo: IUserinfo = {
+    sub: "test-sub",
+    key1: "value1"
+  }
 
   let pkceSource: SubstituteOf<PkceSource>;
 
@@ -142,6 +147,19 @@ describe('SecureImpl', () => {
       it('does not have auth storage', () => {
         expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
       });
+
+      describe('getUserinfo', () => {
+
+        it('throws error', async () => {
+          try {
+            await unit.getUserinfo()
+            fail('Error should have been thrown')
+          } catch (e) {
+            expect(e.message).toBe('Not authenticated')
+          }
+        })
+
+      })
 
       describe('secure', () => {
         describe('authentication already in storage', () => {
@@ -371,6 +389,55 @@ describe('SecureImpl', () => {
             });
             it('sets authentication to storgae', () => {
               expect(sessionStorage.__STORE__[storageAuthKey]).toEqual(JSON.stringify(authentication));
+            });
+
+            describe('getUserinfo', () => {
+
+              let result: IUserinfo
+
+              beforeEach(async () => {
+                mockAxios.get.mockResolvedValue({
+                  data: userinfo,
+                });
+                try {
+                  result = await unit.getUserinfo()
+                } catch (e) {
+                  error = e;
+                }
+              });
+              it('makes call to userinfo', async () => {
+                expect(mockAxios.get).toHaveBeenCalledWith(
+                  issuer + '/userinfo',
+                  {
+                    headers: { 'Authorization': 'Bearer ' + accessToken },
+                  },
+                );
+              });
+              it('does not throw an error', () => {
+                expect(error).toBeUndefined();
+              });
+              it('returns userinfo', () => {
+                expect(result).toEqual(userinfo);
+              });
+              describe('second get', () => {
+                beforeEach(async () => {
+                  mockAxios.get.mockReset()
+                  try {
+                    result = await unit.getUserinfo()
+                  } catch (e) {
+                    error = e;
+                  }
+                })
+                it('does not make call to userinfo', async () => {
+                  expect(mockAxios.get).not.toBeCalled()
+                });
+                it('does not throw an error', () => {
+                  expect(error).toBeUndefined();
+                });
+                it('returns userinfo', () => {
+                  expect(result).toEqual(userinfo);
+                });
+              })
             });
           });
         });
