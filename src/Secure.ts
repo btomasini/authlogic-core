@@ -58,7 +58,7 @@ class SecureImpl implements ISecure {
   private params?: IParams;
   private pkceSource: PkceSource;
   private authentication?: Authentication;
-  private userinfo?: IUserinfo
+  private userinfo?: IUserinfo;
 
   constructor(pkceSource: PkceSource) {
     this.pkceSource = pkceSource;
@@ -73,24 +73,22 @@ class SecureImpl implements ISecure {
   }
 
   public async getUserinfo(): Promise<IUserinfo> {
-
     if (this.userinfo) {
-      return Promise.resolve(this.userinfo)
+      return Promise.resolve(this.userinfo);
     }
 
     if (!this.authentication) {
-      throw new Error('Not authenticated')
+      throw new Error('Not authenticated');
     }
 
     const resp = await axios.get(this.params!.issuer + '/userinfo', {
       headers: {
-        'Authorization': 'Bearer ' + this.authentication.accessToken
-      }
-    })
+        Authorization: 'Bearer ' + this.authentication.accessToken,
+      },
+    });
 
-    this.userinfo = resp.data
-    return this.userinfo!
-
+    this.userinfo = resp.data;
+    return this.userinfo!;
   }
 
   public async secure() {

@@ -68,9 +68,9 @@ describe('SecureImpl', () => {
   };
 
   const userinfo: IUserinfo = {
-    sub: "test-sub",
-    key1: "value1"
-  }
+    sub: 'test-sub',
+    key1: 'value1',
+  };
 
   let pkceSource: SubstituteOf<PkceSource>;
 
@@ -149,17 +149,15 @@ describe('SecureImpl', () => {
       });
 
       describe('getUserinfo', () => {
-
         it('throws error', async () => {
           try {
-            await unit.getUserinfo()
-            fail('Error should have been thrown')
+            await unit.getUserinfo();
+            fail('Error should have been thrown');
           } catch (e) {
-            expect(e.message).toBe('Not authenticated')
+            expect(e.message).toBe('Not authenticated');
           }
-        })
-
-      })
+        });
+      });
 
       describe('secure', () => {
         describe('authentication already in storage', () => {
@@ -392,26 +390,22 @@ describe('SecureImpl', () => {
             });
 
             describe('getUserinfo', () => {
-
-              let result: IUserinfo
+              let result: IUserinfo;
 
               beforeEach(async () => {
                 mockAxios.get.mockResolvedValue({
                   data: userinfo,
                 });
                 try {
-                  result = await unit.getUserinfo()
+                  result = await unit.getUserinfo();
                 } catch (e) {
                   error = e;
                 }
               });
               it('makes call to userinfo', async () => {
-                expect(mockAxios.get).toHaveBeenCalledWith(
-                  issuer + '/userinfo',
-                  {
-                    headers: { 'Authorization': 'Bearer ' + accessToken },
-                  },
-                );
+                expect(mockAxios.get).toHaveBeenCalledWith(issuer + '/userinfo', {
+                  headers: { Authorization: 'Bearer ' + accessToken },
+                });
               });
               it('does not throw an error', () => {
                 expect(error).toBeUndefined();
@@ -421,15 +415,15 @@ describe('SecureImpl', () => {
               });
               describe('second get', () => {
                 beforeEach(async () => {
-                  mockAxios.get.mockReset()
+                  mockAxios.get.mockReset();
                   try {
-                    result = await unit.getUserinfo()
+                    result = await unit.getUserinfo();
                   } catch (e) {
                     error = e;
                   }
-                })
+                });
                 it('does not make call to userinfo', async () => {
-                  expect(mockAxios.get).not.toBeCalled()
+                  expect(mockAxios.get).not.toBeCalled();
                 });
                 it('does not throw an error', () => {
                   expect(error).toBeUndefined();
@@ -437,7 +431,7 @@ describe('SecureImpl', () => {
                 it('returns userinfo', () => {
                   expect(result).toEqual(userinfo);
                 });
-              })
+              });
             });
           });
         });
