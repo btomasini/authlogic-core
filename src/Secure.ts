@@ -129,7 +129,6 @@ class SecureImpl implements ISecure {
   }
 
   private async loadFromCode(code: string, state: string | undefined) {
-
     const storage = await this.getStorage();
 
     if (!storage) {
@@ -159,7 +158,6 @@ class SecureImpl implements ISecure {
   }
 
   private async processTokenResponse(resp: any) {
-
     if (resp.error) {
       this.authentication = undefined;
       throw new Error(`[${resp.error}] ${resp.error_description}`);
@@ -178,15 +176,13 @@ class SecureImpl implements ISecure {
       }
       await this.finalStorage(this.authentication!, this.userinfo!);
 
-      this.refreshLoop(this)
-
+      this.refreshLoop(this);
     }
   }
 
   private refreshLoop(that: SecureImpl) {
-
     // tslint:disable-next-line
-    console.log('Statging refresh loop')
+    console.log('Statging refresh loop');
 
     // seconds -> milliseconds
     const interval = (that.authentication!.expiresIn - 30) * 1000;
@@ -197,7 +193,6 @@ class SecureImpl implements ISecure {
         that.refreshCount++;
       }
     }, interval);
-
   }
 
   private async refresh(that: SecureImpl) {
@@ -218,7 +213,7 @@ class SecureImpl implements ISecure {
     that.processTokenResponse(resp);
 
     // tslint:disable-next-line
-    console.log('Refreshed! ' + that.authentication?.accessToken)
+    console.log('Refreshed! ' + that.authentication?.accessToken);
   }
 
   private async loadUserinfo(): Promise<void> {
@@ -282,7 +277,7 @@ class SecureImpl implements ISecure {
     if (authString && userinfoString) {
       this.authentication = JSON.parse(authString);
       this.userinfo = JSON.parse(userinfoString);
-      this.refreshLoop(this)
+      this.refreshLoop(this);
       return true;
     } else {
       return false;
