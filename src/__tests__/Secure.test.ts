@@ -13,8 +13,8 @@ const pushStateMock = jest.fn();
 
 beforeAll(() => {
   history.pushState = pushStateMock;
-  jest.useFakeTimers()
-})
+  jest.useFakeTimers();
+});
 
 beforeEach(() => {
   pushStateMock.mockReset();
@@ -61,8 +61,8 @@ describe('SecureImpl', () => {
   const accessToken = 'test-access-token';
   const accessToken2 = 'test-access-token-2';
 
-  const sub = 'test-sub'
-  const lastName = 'test-lastname'
+  const sub = 'test-sub';
+  const lastName = 'test-lastname';
 
   const authentication = {
     accessToken,
@@ -79,8 +79,9 @@ describe('SecureImpl', () => {
   };
 
   const userinfo: IUserinfo = {
-    lastName, sub
-  }
+    lastName,
+    sub,
+  };
 
   let pkceSource: SubstituteOf<PkceSource>;
 
@@ -99,7 +100,7 @@ describe('SecureImpl', () => {
     const $unit = new SecureImpl(pkceSource);
     $unit.randomString = (length: number) => `stub-${length}`;
     $unit.getQuery = () => query;
-    $unit.refreshLimit = 3
+    $unit.refreshLimit = 3;
     return $unit;
   };
 
@@ -160,7 +161,6 @@ describe('SecureImpl', () => {
       });
 
       describe('secure', () => {
-
         describe('authentication and userinfo already in storage', () => {
           beforeEach(async () => {
             sessionStorage.__STORE__[storageAuthKey] = JSON.stringify(authentication);
@@ -231,7 +231,7 @@ describe('SecureImpl', () => {
             try {
               await unit.secure();
             } catch (e) {
-              error = e
+              error = e;
             }
           });
           it('throws and error', () => {
@@ -276,7 +276,6 @@ describe('SecureImpl', () => {
         });
 
         describe('return with code and storage', () => {
-
           beforeEach(async () => {
             query = `?code=${code}`;
             sessionStorage.__STORE__[storageFlowKey] = JSON.stringify({
@@ -415,12 +414,9 @@ describe('SecureImpl', () => {
               );
             });
             it('makes call to userinfo endpoint', async () => {
-              expect(mockAxios.get).toHaveBeenCalledWith(
-                issuer + '/userinfo',
-                {
-                  headers: { 'Authorization': 'Bearer ' + accessToken },
-                },
-              );
+              expect(mockAxios.get).toHaveBeenCalledWith(issuer + '/userinfo', {
+                headers: { Authorization: 'Bearer ' + accessToken },
+              });
             });
             it('pushes state to stored uri', () => {
               expect(pushStateMock.mock.calls.length).toBe(1);
@@ -437,10 +433,9 @@ describe('SecureImpl', () => {
             });
 
             describe('successful refresh', () => {
-
               beforeEach(() => {
-                mockAxios.post.mockReset()
-                mockAxios.get.mockReset()
+                mockAxios.post.mockReset();
+                mockAxios.get.mockReset();
                 pushStateMock.mockReset();
                 mockAxios.post.mockResolvedValue({
                   data: {
@@ -452,11 +447,11 @@ describe('SecureImpl', () => {
                   },
                 });
                 try {
-                  jest.runAllTimers()
+                  jest.runAllTimers();
                 } catch (e) {
                   error = e;
                 }
-              })
+              });
 
               it('does not throw an error', () => {
                 expect(error).toBeUndefined();
@@ -481,7 +476,7 @@ describe('SecureImpl', () => {
                 );
               });
               it('does not make call to userinfo endpoint', async () => {
-                expect(mockAxios.get).not.toHaveBeenCalled()
+                expect(mockAxios.get).not.toHaveBeenCalled();
               });
               it('does not pushe state', () => {
                 expect(pushStateMock.mock.calls.length).toBe(0);

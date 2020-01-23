@@ -51,7 +51,6 @@ const randomStringDefault = (length: number): string => {
 const getQueryDefault = (): string => location.search;
 
 class SecureImpl implements ISecure {
-
   // Visible for testing
   public randomString: (length: number) => string = randomStringDefault;
 
@@ -85,7 +84,6 @@ class SecureImpl implements ISecure {
   }
 
   public async secure() {
-
     this.assertInit();
 
     if (await this.loadFromStorage()) {
@@ -100,7 +98,7 @@ class SecureImpl implements ISecure {
 
     if (errorCategory) {
       this.authentication = undefined;
-      const $storage = await this.getStorage()
+      const $storage = await this.getStorage();
       if ($storage?.thisUri) {
         window.history.pushState('page', '', $storage.thisUri);
       }
@@ -122,7 +120,6 @@ class SecureImpl implements ISecure {
   }
 
   private stringFromQuery(q: queryString.ParsedQuery<string>, name: string): string | undefined {
-
     const raw = q[name];
 
     if (typeof raw === 'string') {
@@ -132,7 +129,6 @@ class SecureImpl implements ISecure {
   }
 
   private async loadFromCode(code: string, state: string | undefined) {
-
     const storage = await this.getStorage();
 
     if (!storage) {
@@ -155,14 +151,13 @@ class SecureImpl implements ISecure {
     const resp = res.data;
 
     try {
-      await this.processTokenResponse(resp, storage.thisUri)
+      await this.processTokenResponse(resp, storage.thisUri);
     } finally {
       window.history.pushState('page', '', storage.thisUri);
     }
   }
 
   private async processTokenResponse(resp: any, thisUri: string) {
-
     if (resp.error) {
       this.authentication = undefined;
       throw new Error(`[${resp.error}] ${resp.error_description}`);
@@ -181,27 +176,27 @@ class SecureImpl implements ISecure {
       }
       await this.finalStorage(this.authentication!, this.userinfo!);
 
-      const that = this
+      const that = this;
 
-      const interval = this.authentication.expiresIn - 30
+      const interval = this.authentication.expiresIn - 30;
 
       setTimeout(async function refresh() {
         if (that.refreshLimit === -1 || that.refreshLimit >= that.refreshCount) {
-          console.log('Triggering refresh')
-          await that.refresh(that, thisUri)
-          that.refreshCount++
+          // tslint:disable-next-line
+          console.log('Triggering refresh');
+          await that.refresh(that, thisUri);
+          that.refreshCount++;
         }
-      }, interval)
+      }, interval);
     }
   }
 
   private async refresh(that: SecureImpl, thisUri: string) {
-
     const res = await axios.post(
       that.params!.issuer + '/oauth/token',
       queryString.stringify({
         grant_type: 'refresh_token',
-        refresh_token: that.authentication!.refreshToken
+        refresh_token: that.authentication!.refreshToken,
       }),
       {
         adapter: require('axios/lib/adapters/xhr'),
@@ -211,13 +206,14 @@ class SecureImpl implements ISecure {
 
     const resp = res.data;
 
-    that.processTokenResponse(resp, thisUri)
-    console.log('Refreshed! ' + that.authentication!.accessToken)
-    console.log('Refreshed! ' + that.authentication!.refreshToken)
+    that.processTokenResponse(resp, thisUri);
+    // tslint:disable-next-line
+    console.log('Refreshed! ' + that.authentication!.accessToken);
+    // tslint:disable-next-line
+    console.log('Refreshed! ' + that.authentication!.refreshToken);
   }
 
   private async loadUserinfo(): Promise<void> {
-
     if (this.userinfo) {
       return;
     }
@@ -235,9 +231,7 @@ class SecureImpl implements ISecure {
     this.userinfo = resp.data;
   }
 
-
   private async redirect(storage: IStorage) {
-
     const p = this.params!;
 
     window.location.assign(
