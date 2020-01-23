@@ -187,6 +187,7 @@ class SecureImpl implements ISecure {
 
       setTimeout(async function refresh() {
         if (that.refreshLimit === -1 || that.refreshLimit >= that.refreshCount) {
+          console.log('Triggering refresh')
           await that.refresh(that, thisUri)
           that.refreshCount++
         }
@@ -211,6 +212,8 @@ class SecureImpl implements ISecure {
     const resp = res.data;
 
     that.processTokenResponse(resp, thisUri)
+    console.log('Refreshed! ' + that.authentication!.accessToken)
+    console.log('Refreshed! ' + that.authentication!.refreshToken)
   }
 
   private async loadUserinfo(): Promise<void> {
