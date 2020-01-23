@@ -180,6 +180,65 @@ describe('SecureImpl', () => {
           it('does not have flow storage', () => {
             expect(sessionStorage.__STORE__[storageFlowKey]).toBeUndefined();
           });
+          describe('successful refresh', () => {
+            beforeEach(() => {
+              mockAxios.post.mockReset();
+              mockAxios.get.mockReset();
+              pushStateMock.mockReset();
+              mockAxios.post.mockResolvedValue({
+                data: {
+                  access_token: accessToken2,
+                  id_token: idToken,
+                  expires_in: expiresIn,
+                  refresh_token: refreshToken,
+                  token_type: 'bearer',
+                },
+              });
+              try {
+                jest.runAllTimers();
+              } catch (e) {
+                error = e;
+              }
+            });
+
+            it('does not throw an error', () => {
+              expect(error).toBeUndefined();
+            });
+            it('sets new authentication', async () => {
+              expect(unit.getAuthentication()).toEqual(authentication2);
+            });
+            it('leaves userinfo unchanged', async () => {
+              expect(unit.getUserinfo()).toEqual(userinfo);
+            });
+            it('makes call to token endpoint', async () => {
+              expect(mockAxios.post).toHaveBeenCalledWith(
+                issuer + '/oauth/token',
+                queryString.stringify({
+                  refresh_token: refreshToken,
+                  grant_type: 'refresh_token',
+                }),
+                {
+                  adapter: require('axios/lib/adapters/xhr'),
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                },
+              );
+            });
+            it('does not make call to userinfo endpoint', async () => {
+              expect(mockAxios.get).not.toHaveBeenCalled();
+            });
+            it('does not push state', () => {
+              expect(pushStateMock.mock.calls.length).toBe(0);
+            });
+            it('removes storage', () => {
+              expect(sessionStorage.__STORE__[storageFlowKey]).toBeUndefined();
+            });
+            it('sets authentication in storage', () => {
+              expect(sessionStorage.__STORE__[storageAuthKey]).toEqual(JSON.stringify(authentication2));
+            });
+            it('leaves userinfo to storage', () => {
+              expect(sessionStorage.__STORE__[storageUserinfoKey]).toEqual(JSON.stringify(userinfo));
+            });
+          });
         });
 
         describe('authentication not in storage', () => {
