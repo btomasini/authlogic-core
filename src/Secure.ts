@@ -25,12 +25,13 @@ interface IUserinfo {
 interface ISecure {
   init(params: IParams): void;
   secure(): Promise<void>;
-  getUserinfo(): Promise<IUserinfo>;
+  getUserinfo(): Optional<IUserinfo>;
   getAuthentication(): Optional<Authentication>;
 }
 
 const storageFlowKey = 'authlogic.storage.flow';
 const storageAuthKey = 'authlogic.storage.auth';
+const storageUserinfoKey = 'authlogic.storage.userinfo';
 
 const codeKey = 'code';
 const stateKey = 'state';
@@ -50,11 +51,17 @@ const randomStringDefault = (length: number): string => {
 const getQueryDefault = (): string => location.search;
 
 class SecureImpl implements ISecure {
+
   // Visible for testing
   public randomString: (length: number) => string = randomStringDefault;
 
   // Visible for testing
   public getQuery: () => string = getQueryDefault;
+
+  // Visible for testing
+  public refreshLimit: number = -1;
+
+  private refreshCount = 0;
 
   private params?: IParams;
   private pkceSource: PkceSource;
@@ -73,26 +80,12 @@ class SecureImpl implements ISecure {
     return this.authentication;
   }
 
-  public async getUserinfo(): Promise<IUserinfo> {
-    if (this.userinfo) {
-      return Promise.resolve(this.userinfo);
-    }
-
-    if (!this.authentication) {
-      throw new Error('Not authenticated');
-    }
-
-    const resp = await axios.get(this.params!.issuer + '/userinfo', {
-      headers: {
-        Authorization: 'Bearer ' + this.authentication.accessToken,
-      },
-    });
-
-    this.userinfo = resp.data;
-    return this.userinfo!;
+  public getUserinfo(): Optional<IUserinfo> {
+    return this.userinfo;
   }
 
   public async secure() {
+
     this.assertInit();
 
     if (await this.loadFromStorage()) {
@@ -107,6 +100,10 @@ class SecureImpl implements ISecure {
 
     if (errorCategory) {
       this.authentication = undefined;
+      const $storage = await this.getStorage()
+      if ($storage?.thisUri) {
+        window.history.pushState('page', '', $storage.thisUri);
+      }
       throw new Error(`[${errorCategory}] ${errorDescription}`);
     }
     if (code) {
@@ -125,7 +122,9 @@ class SecureImpl implements ISecure {
   }
 
   private stringFromQuery(q: queryString.ParsedQuery<string>, name: string): string | undefined {
+
     const raw = q[name];
+
     if (typeof raw === 'string') {
       return raw;
     }
@@ -133,7 +132,9 @@ class SecureImpl implements ISecure {
   }
 
   private async loadFromCode(code: string, state: string | undefined) {
+
     const storage = await this.getStorage();
+
     if (!storage) {
       throw new Error('Nothing in storage');
     }
@@ -153,6 +154,15 @@ class SecureImpl implements ISecure {
 
     const resp = res.data;
 
+    try {
+      await this.processTokenResponse(resp, storage.thisUri)
+    } finally {
+      window.history.pushState('page', '', storage.thisUri);
+    }
+  }
+
+  private async processTokenResponse(resp: any, thisUri: string) {
+
     if (resp.error) {
       this.authentication = undefined;
       throw new Error(`[${resp.error}] ${resp.error_description}`);
@@ -165,13 +175,68 @@ class SecureImpl implements ISecure {
         idToken: resp.id_token,
         refreshToken: resp.refresh_token,
       };
-      await this.finalStorage(this.authentication);
-      window.history.pushState('page', '', storage.thisUri);
+      // Only need to load this once
+      if (!this.userinfo) {
+        await this.loadUserinfo();
+      }
+      await this.finalStorage(this.authentication!, this.userinfo!);
+
+      const that = this
+
+      const interval = this.authentication.expiresIn - 30
+
+      setTimeout(async function refresh() {
+        if (that.refreshLimit === -1 || that.refreshLimit >= that.refreshCount) {
+          await that.refresh(that, thisUri)
+          that.refreshCount++
+        }
+      }, interval)
     }
   }
 
+  private async refresh(that: SecureImpl, thisUri: string) {
+
+    const res = await axios.post(
+      that.params!.issuer + '/oauth/token',
+      queryString.stringify({
+        grant_type: 'refresh_token',
+        refresh_token: that.authentication!.refreshToken
+      }),
+      {
+        adapter: require('axios/lib/adapters/xhr'),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      },
+    );
+
+    const resp = res.data;
+
+    that.processTokenResponse(resp, thisUri)
+  }
+
+  private async loadUserinfo(): Promise<void> {
+
+    if (this.userinfo) {
+      return;
+    }
+
+    if (!this.authentication) {
+      throw new Error('Not authenticated');
+    }
+
+    const resp = await axios.get(this.params!.issuer + '/userinfo', {
+      headers: {
+        Authorization: 'Bearer ' + this.authentication.accessToken,
+      },
+    });
+
+    this.userinfo = resp.data;
+  }
+
+
   private async redirect(storage: IStorage) {
+
     const p = this.params!;
+
     window.location.assign(
       `${this.params!.issuer}/authorize?client_id=${p.clientId}&redirect_uri=${encodeURIComponent(
         storage.thisUri,
@@ -200,15 +265,18 @@ class SecureImpl implements ISecure {
     return storage;
   }
 
-  private async finalStorage(authentication: Authentication) {
+  private async finalStorage(authentication: Authentication, userinfo: IUserinfo) {
     sessionStorage.setItem(storageAuthKey, JSON.stringify(authentication));
+    sessionStorage.setItem(storageUserinfoKey, JSON.stringify(userinfo));
     sessionStorage.removeItem(storageFlowKey);
   }
 
   private async loadFromStorage(): Promise<boolean> {
     const authString = sessionStorage.getItem(storageAuthKey);
-    if (authString) {
+    const userinfoString = sessionStorage.getItem(storageUserinfoKey);
+    if (authString && userinfoString) {
       this.authentication = JSON.parse(authString);
+      this.userinfo = JSON.parse(userinfoString);
       return true;
     } else {
       return false;

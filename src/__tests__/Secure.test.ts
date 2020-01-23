@@ -4,23 +4,21 @@ import 'jest-localstorage-mock';
 import * as queryString from 'query-string';
 import { Optional } from '../Lang';
 import { PkceSource } from '../Pkce';
-import { IParams, randomStringDefault, SecureImpl, IUserinfo } from '../Secure';
+import { IParams, IUserinfo, randomStringDefault, SecureImpl } from '../Secure';
 
 jest.mock('axios');
 const mockAxios = axios as jest.Mocked<typeof axios>;
 
-let origPushState: any;
 const pushStateMock = jest.fn();
+
+beforeAll(() => {
+  history.pushState = pushStateMock;
+  jest.useFakeTimers()
+})
 
 beforeEach(() => {
   pushStateMock.mockReset();
   sessionStorage.clear();
-  origPushState = history.pushState;
-  history.pushState = pushStateMock;
-});
-
-afterEach(() => {
-  history.pushState = origPushState;
 });
 
 describe('randomStringDefault', () => {
@@ -39,6 +37,7 @@ describe('randomStringDefault', () => {
 describe('SecureImpl', () => {
   const storageFlowKey = 'authlogic.storage.flow';
   const storageAuthKey = 'authlogic.storage.auth';
+  const storageUserinfoKey = 'authlogic.storage.userinfo';
 
   const errorCategory = 'test-error';
   const errorDescription = 'test-error-description';
@@ -55,10 +54,15 @@ describe('SecureImpl', () => {
 
   let query = '';
 
+  const thisUri = 'http://test-uri';
   const refreshToken = 'test-refresh-token';
   const idToken = 'test-id-token';
   const expiresIn = 7200;
   const accessToken = 'test-access-token';
+  const accessToken2 = 'test-access-token-2';
+
+  const sub = 'test-sub'
+  const lastName = 'test-lastname'
 
   const authentication = {
     accessToken,
@@ -67,10 +71,16 @@ describe('SecureImpl', () => {
     refreshToken,
   };
 
-  const userinfo: IUserinfo = {
-    sub: 'test-sub',
-    key1: 'value1',
+  const authentication2 = {
+    accessToken: accessToken2,
+    expiresIn,
+    idToken,
+    refreshToken,
   };
+
+  const userinfo: IUserinfo = {
+    lastName, sub
+  }
 
   let pkceSource: SubstituteOf<PkceSource>;
 
@@ -89,6 +99,7 @@ describe('SecureImpl', () => {
     const $unit = new SecureImpl(pkceSource);
     $unit.randomString = (length: number) => `stub-${length}`;
     $unit.getQuery = () => query;
+    $unit.refreshLimit = 3
     return $unit;
   };
 
@@ -111,14 +122,14 @@ describe('SecureImpl', () => {
       it('has no authentication', () => {
         expect(unit.getAuthentication()).toBeUndefined();
       });
+      it('has no userinfo', () => {
+        expect(unit.getUserinfo()).toBeUndefined();
+      });
       it('has no session storage', () => {
         expect(sessionStorage.__STORE__).toEqual({});
       });
       it('does not push state', () => {
         expect(pushStateMock.mock.calls.length).toBe(0);
-      });
-      it('does not have auth storage', () => {
-        expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
       });
       it('secure throws excepiton', async () => {
         try {
@@ -138,36 +149,30 @@ describe('SecureImpl', () => {
       it('has no authentication', () => {
         expect(unit.getAuthentication()).toBeUndefined();
       });
+      it('has no userinfo', () => {
+        expect(unit.getUserinfo()).toBeUndefined();
+      });
       it('has no session storage', () => {
         expect(sessionStorage.__STORE__).toEqual({});
       });
       it('does not push state', () => {
         expect(pushStateMock.mock.calls.length).toBe(0);
       });
-      it('does not have auth storage', () => {
-        expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
-      });
-
-      describe('getUserinfo', () => {
-        it('throws error', async () => {
-          try {
-            await unit.getUserinfo();
-            fail('Error should have been thrown');
-          } catch (e) {
-            expect(e.message).toBe('Not authenticated');
-          }
-        });
-      });
 
       describe('secure', () => {
-        describe('authentication already in storage', () => {
+
+        describe('authentication and userinfo already in storage', () => {
           beforeEach(async () => {
             sessionStorage.__STORE__[storageAuthKey] = JSON.stringify(authentication);
+            sessionStorage.__STORE__[storageUserinfoKey] = JSON.stringify(userinfo);
             expect(unit.getAuthentication()).toBeUndefined();
             await unit.secure();
           });
           it('loads authentication from the session store', () => {
             expect(unit.getAuthentication()).toEqual(authentication);
+          });
+          it('loads userinfo from the session store', () => {
+            expect(unit.getUserinfo()).toEqual(userinfo);
           });
           it('does not push state', () => {
             expect(pushStateMock.mock.calls.length).toBe(0);
@@ -176,7 +181,8 @@ describe('SecureImpl', () => {
             expect(sessionStorage.__STORE__[storageFlowKey]).toBeUndefined();
           });
         });
-        describe('redirect', () => {
+
+        describe('authentication not in storage', () => {
           beforeEach(async () => {
             pkceSource.create().returns({
               challenge,
@@ -186,6 +192,9 @@ describe('SecureImpl', () => {
           });
           it('has no authentication', async () => {
             expect(unit.getAuthentication()).toBeUndefined();
+          });
+          it('has no userinfo', async () => {
+            expect(unit.getUserinfo()).toBeUndefined();
           });
           it('redirected to the endpoint', () => {
             expect(redirectTo).toBe(
@@ -211,17 +220,22 @@ describe('SecureImpl', () => {
           it('does not have auth storage', () => {
             expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
           });
+          it('does not have userionfo storage', () => {
+            expect(sessionStorage.__STORE__[storageUserinfoKey]).toBeUndefined();
+          });
         });
 
         describe('return with code without storage', () => {
-          it('throws an error', async () => {
+          beforeEach(async () => {
             query = `?code=${code}`;
             try {
               await unit.secure();
-              fail('Expected an error');
             } catch (e) {
-              expect(e).toEqual(new Error('Nothing in storage'));
+              error = e
             }
+          });
+          it('throws and error', () => {
+            expect(error).toEqual(new Error('Nothing in storage'));
           });
           it('does not push state', () => {
             expect(pushStateMock.mock.calls.length).toBe(0);
@@ -229,11 +243,17 @@ describe('SecureImpl', () => {
           it('does not have auth storage', () => {
             expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
           });
+          it('does not have userinfo storage', () => {
+            expect(sessionStorage.__STORE__[storageUserinfoKey]).toBeUndefined();
+          });
         });
 
         describe('return with oauth error message', () => {
           beforeEach(async () => {
             query = `?error=${errorCategory}&error_description=${errorDescription}`;
+            sessionStorage.__STORE__[storageFlowKey] = JSON.stringify({
+              thisUri,
+            });
             try {
               await unit.secure();
             } catch (e) {
@@ -243,16 +263,19 @@ describe('SecureImpl', () => {
           it('throws an error', () => {
             expect(error).toEqual(new Error(`[${errorCategory}] ${errorDescription}`));
           });
-          it('does not push state', () => {
-            expect(pushStateMock.mock.calls.length).toBe(0);
+          it('pushes state after error', () => {
+            expect(pushStateMock.mock.calls.length).toBe(1);
+            expect(pushStateMock.mock.calls[0][2]).toBe(thisUri);
           });
           it('does not have auth storage', () => {
             expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
           });
+          it('does not have userinfo storage', () => {
+            expect(sessionStorage.__STORE__[storageUserinfoKey]).toBeUndefined();
+          });
         });
 
         describe('return with code and storage', () => {
-          const thisUri = 'http://test-uri';
 
           beforeEach(async () => {
             query = `?code=${code}`;
@@ -298,6 +321,9 @@ describe('SecureImpl', () => {
             it('does not have auth storage', () => {
               expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
             });
+            it('does not have userinfo storage', () => {
+              expect(sessionStorage.__STORE__[storageUserinfoKey]).toBeUndefined();
+            });
           });
 
           describe('oauth error', () => {
@@ -334,11 +360,15 @@ describe('SecureImpl', () => {
                 },
               );
             });
-            it('does not push state', () => {
-              expect(pushStateMock.mock.calls.length).toBe(0);
+            it('pushes state after error', () => {
+              expect(pushStateMock.mock.calls.length).toBe(1);
+              expect(pushStateMock.mock.calls[0][2]).toBe(thisUri);
             });
             it('does not have auth storage', () => {
               expect(sessionStorage.__STORE__[storageAuthKey]).toBeUndefined();
+            });
+            it('does not have userinfo storage', () => {
+              expect(sessionStorage.__STORE__[storageUserinfoKey]).toBeUndefined();
             });
           });
           describe('success', () => {
@@ -352,6 +382,9 @@ describe('SecureImpl', () => {
                   token_type: 'bearer',
                 },
               });
+              mockAxios.get.mockResolvedValue({
+                data: userinfo,
+              });
               try {
                 await unit.secure();
               } catch (e) {
@@ -362,7 +395,10 @@ describe('SecureImpl', () => {
               expect(error).toBeUndefined();
             });
             it('sets authentication', async () => {
-              expect(await unit.getAuthentication()).toEqual(authentication);
+              expect(unit.getAuthentication()).toEqual(authentication);
+            });
+            it('sets userinfo', async () => {
+              expect(unit.getUserinfo()).toEqual(userinfo);
             });
             it('makes call to token endpoint', async () => {
               expect(mockAxios.post).toHaveBeenCalledWith(
@@ -378,6 +414,14 @@ describe('SecureImpl', () => {
                 },
               );
             });
+            it('makes call to userinfo endpoint', async () => {
+              expect(mockAxios.get).toHaveBeenCalledWith(
+                issuer + '/userinfo',
+                {
+                  headers: { 'Authorization': 'Bearer ' + accessToken },
+                },
+              );
+            });
             it('pushes state to stored uri', () => {
               expect(pushStateMock.mock.calls.length).toBe(1);
               expect(pushStateMock.mock.calls[0][2]).toBe(thisUri);
@@ -385,52 +429,71 @@ describe('SecureImpl', () => {
             it('removes storage', () => {
               expect(sessionStorage.__STORE__[storageFlowKey]).toBeUndefined();
             });
-            it('sets authentication to storgae', () => {
+            it('sets authentication to storage', () => {
               expect(sessionStorage.__STORE__[storageAuthKey]).toEqual(JSON.stringify(authentication));
             });
+            it('sets userinfo to storage', () => {
+              expect(sessionStorage.__STORE__[storageUserinfoKey]).toEqual(JSON.stringify(userinfo));
+            });
 
-            describe('getUserinfo', () => {
-              let result: IUserinfo;
+            describe('successful refresh', () => {
 
-              beforeEach(async () => {
-                mockAxios.get.mockResolvedValue({
-                  data: userinfo,
+              beforeEach(() => {
+                mockAxios.post.mockReset()
+                mockAxios.get.mockReset()
+                pushStateMock.mockReset();
+                mockAxios.post.mockResolvedValue({
+                  data: {
+                    access_token: accessToken2,
+                    id_token: idToken,
+                    expires_in: expiresIn,
+                    refresh_token: refreshToken,
+                    token_type: 'bearer',
+                  },
                 });
                 try {
-                  result = await unit.getUserinfo();
+                  jest.runAllTimers()
                 } catch (e) {
                   error = e;
                 }
-              });
-              it('makes call to userinfo', async () => {
-                expect(mockAxios.get).toHaveBeenCalledWith(issuer + '/userinfo', {
-                  headers: { Authorization: 'Bearer ' + accessToken },
-                });
-              });
+              })
+
               it('does not throw an error', () => {
                 expect(error).toBeUndefined();
               });
-              it('returns userinfo', () => {
-                expect(result).toEqual(userinfo);
+              it('sets new authentication', async () => {
+                expect(unit.getAuthentication()).toEqual(authentication2);
               });
-              describe('second get', () => {
-                beforeEach(async () => {
-                  mockAxios.get.mockReset();
-                  try {
-                    result = await unit.getUserinfo();
-                  } catch (e) {
-                    error = e;
-                  }
-                });
-                it('does not make call to userinfo', async () => {
-                  expect(mockAxios.get).not.toBeCalled();
-                });
-                it('does not throw an error', () => {
-                  expect(error).toBeUndefined();
-                });
-                it('returns userinfo', () => {
-                  expect(result).toEqual(userinfo);
-                });
+              it('leaves userinfo unchanged', async () => {
+                expect(unit.getUserinfo()).toEqual(userinfo);
+              });
+              it('makes call to token endpoint', async () => {
+                expect(mockAxios.post).toHaveBeenCalledWith(
+                  issuer + '/oauth/token',
+                  queryString.stringify({
+                    refresh_token: refreshToken,
+                    grant_type: 'refresh_token',
+                  }),
+                  {
+                    adapter: require('axios/lib/adapters/xhr'),
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  },
+                );
+              });
+              it('does not make call to userinfo endpoint', async () => {
+                expect(mockAxios.get).not.toHaveBeenCalled()
+              });
+              it('does not pushe state', () => {
+                expect(pushStateMock.mock.calls.length).toBe(0);
+              });
+              it('removes storage', () => {
+                expect(sessionStorage.__STORE__[storageFlowKey]).toBeUndefined();
+              });
+              it('sets authentication in storage', () => {
+                expect(sessionStorage.__STORE__[storageAuthKey]).toEqual(JSON.stringify(authentication2));
+              });
+              it('leaves userinfo to storage', () => {
+                expect(sessionStorage.__STORE__[storageUserinfoKey]).toEqual(JSON.stringify(userinfo));
               });
             });
           });
