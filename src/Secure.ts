@@ -178,7 +178,8 @@ class SecureImpl implements ISecure {
 
       const that = this;
 
-      const interval = this.authentication.expiresIn - 30;
+      // seconds -> milliseconds
+      const interval = (this.authentication.expiresIn - 30) * 1000;
 
       setTimeout(async function refresh() {
         if (that.refreshLimit === -1 || that.refreshLimit >= that.refreshCount) {
